@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scratch for a Surprise! 💖</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffdde1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .card-container {
+            position: relative;
+            width: 320px;
+            height: 400px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(255, 105, 135, 0.4);
+            overflow: hidden;
+            background: white;
+        }
+
+        /* The hidden message underneath */
+        .secret-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            background: #fff0f3;
+            z-index: 1;
+        }
+
+        .secret-message h1 {
+            color: #ff4757;
+            font-size: 2rem;
+            margin: 0 0 10px 0;
+        }
+
+        .secret-message p {
+            color: #ff6b81;
+            font-size: 1.2rem;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        .huge-emoji {
+            font-size: 4rem;
+            margin-bottom: 10px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+
+        /* The scratchable canvas on top */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            cursor: crosshair;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Confetti styling */
+        .confetti {
+            position: absolute;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 10;
+            animation: fall 3s linear forwards;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card-container" id="card">
+        <div class="secret-message">
+            <div class="huge-emoji">🫂</div>
+            <h1>❣️Happy Hug Day Myyy Loveee Duduu❣️</h1>
+            <p>❣️Yaar Anshuuu i seriously want to hug you so bad rn wish you were with me but for now Here is a pyaaraa saa virtual hug until I meet you Loveee Youuu❣️🫶</p>
+        </div>
+
+        <canvas id="scratchCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('scratchCanvas');
+        const ctx = canvas.getContext('2d');
+        const card = document.getElementById('card');
+        
+        let isDrawing = false;
+        let isRevealed = false;
+
+        // Set canvas size to match the container
+        canvas.width = card.offsetWidth;
+        canvas.height = card.offsetHeight;
+
+        // Fill the canvas with a "scratch-off" color and text
+        function initCanvas() {
+            // Create a nice gradient for the scratch-off layer
+            let gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#ff9a9e');
+            gradient.addColorStop(1, '#fecfef');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add text to the scratch layer
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('Pshhh! Scratch Here❣️', canvas.width / 2, canvas.height / 2);
+            
+            // This is the magic that makes the brush "erase" the canvas
+            ctx.globalCompositeOperation = 'destination-out';
+        }
+
+        initCanvas();
+
+        // Get coordinates for mouse or touch
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+            if (e.type.includes('touch')) {
+                x = e.touches[0].clientX - rect.left;
+                y = e.touches[0].clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+            return { x, y };
+        }
+
+        // Scratching mechanics
+        function startScratching(e) {
+            isDrawing = true;
+            scratch(e);
+        }
+
+        function stopScratching() {
+            isDrawing = false;
+            checkReveal();
+        }
+
+        function scratch(e) {
+            if (!isDrawing || isRevealed) return;
+            e.preventDefault(); // Prevents scrolling on mobile
+
+            const { x, y } = getCoordinates(e);
+
+            ctx.beginPath();
+            ctx.arc(x, y, 25, 0, Math.PI * 2); // 25 is the brush size
+            ctx.fill();
+        }
+
+        // Check how much has been scratched off
+        function checkReveal() {
+            if (isRevealed) return;
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            let transparentPixels = 0;
+
+            // Check every 4th value (the alpha channel)
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] === 0) {
+                    transparentPixels++;
+                }
+            }
+
+            const clearPercentage = (transparentPixels / (pixels.length / 4)) * 100;
+
+            // If she scratches more than 40% of the card, reveal the whole thing
+            if (clearPercentage > 40) {
+                isRevealed = true;
+                canvas.style.opacity = '0';
+                setTimeout(() => {
+                    canvas.style.display = 'none';
+                    fireConfetti();
+                }, 500);
+            }
+        }
+
+        // Hug Confetti Explosion!
+        function fireConfetti() {
+            const emojis = ['🫂', '❤️', '🧸', '🥰'];
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = '-50px';
+                    
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 50);
+            }
+        }
+
+        // Desktop Events
+        canvas.addEventListener('mousedown', startScratching);
+        canvas.addEventListener('mousemove', scratch);
+        canvas.addEventListener('mouseup', stopScratching);
+        canvas.addEventListener('mouseleave', stopScratching);
+
+        // Mobile Touch Events
+        canvas.addEventListener('touchstart', startScratching, { passive: false });
+        canvas.addEventListener('touchmove', scratch, { passive: false });
+        canvas.addEventListener('touchend', stopScratching);
+    </script>
+</body>
+</html>
